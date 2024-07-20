@@ -1,6 +1,7 @@
 package com.personik.partyplanner.service.impl
 
 import com.personik.partyplanner.model.Party
+import com.personik.partyplanner.model.User
 import com.personik.partyplanner.repository.inmemory.InMemoryPartyRepositoryImpl
 import com.personik.partyplanner.repository.inmemory.InMemoryUserRepositoryImpl
 import com.personik.partyplanner.service.PartyService
@@ -10,14 +11,14 @@ import org.springframework.stereotype.Service
 class PartyServiceImpl: PartyService {
     private val repositoryImpl = InMemoryPartyRepositoryImpl()
     private val userRepo = InMemoryUserRepositoryImpl()
+    private val userService = UserServiceImpl()
     private var partyIdCounter = 0
 
     override fun createParty(ownerId: Long, partyName: String): Party {
         val partyId = generatePartyId()
-        val newParty = Party(partyId, 0, partyName, mutableListOf(), ownerId)
-        repositoryImpl.createParty(partyId, newParty)
+        val newParty = Party(partyId, 0, partyName, ownerId)
+        return repositoryImpl.createParty(partyId, newParty)
 //        logger.info("new party created")
-        return newParty
     }
 
     private fun generatePartyId(): Int {
@@ -34,7 +35,7 @@ class PartyServiceImpl: PartyService {
         return repositoryImpl.getAllPartiesIds()
     }
 
-    override fun getParty(partyId: Int): Party? {
+    override fun getParty(partyId: Int): Party {
         //  logger.info("getting the party with ID $partyId")
         return repositoryImpl.getParty(partyId)
     }
@@ -46,16 +47,18 @@ class PartyServiceImpl: PartyService {
         return determineOptimalHotelRoom()
     }
 
-    override fun join(partyId: Int, userId: Long) {
-        val party = repositoryImpl.getParty(partyId)
-        if (party!!.ownerId != userId) {
-            val user = userRepo.getUserById(userId)
-            //  logger.info("adding a new guest to party after checking that guestID != ownerID...")
-            user?.let { party.addGuest(it) }
+    override fun join(partyId: Int, user: User) {
+        val ownerId = repositoryImpl.getParty(partyId).ownerId
+        if (ownerId != user.id) {
+            repositoryImpl.addGuestToParty(partyId, user)
         } else {
             //logger.info("user trying to join is owner. Throwing exception")
             throw IllegalArgumentException("Party owner cannot join it")
         }
+    }
+
+    override fun getGuestsOfParty(partyId: Int): List<User> {
+        return repositoryImpl.getGuestsOfParty(partyId)
     }
 
     private fun determineOptimalHotelRoom(): Int {

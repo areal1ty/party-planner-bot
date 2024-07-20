@@ -27,7 +27,7 @@ class InMemoryUserRepositoryImplTest {
     fun `getUserById should return the correct user`() {
         val user = User(id = 1, hotelRoom = 101)
         userRepository.createUser(user.id, user)
-        val retrievedUser = userRepository.getUserById(user.id)
+        val retrievedUser = userRepository.getUserById(1)
         assertNotNull(retrievedUser)
         assertEquals(user, retrievedUser)
     }

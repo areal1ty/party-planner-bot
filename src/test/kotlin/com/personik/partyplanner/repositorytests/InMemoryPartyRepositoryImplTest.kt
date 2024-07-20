@@ -17,7 +17,7 @@ class InMemoryPartyRepositoryImplTest {
     @Test
     fun `createParty should add a party to the repository and return correct party`() {
         val partyId = 12
-        val newParty = Party(partyId, 0, "TestName", mutableListOf(), 145)
+        val newParty = Party(partyId, 0, "TestName", 145)
         partyRepository.createParty(partyId, newParty)
         val retrievedParty = partyRepository.getParty(partyId)
         assertNotNull(retrievedParty)
@@ -34,8 +34,8 @@ class InMemoryPartyRepositoryImplTest {
     fun `getAllParties should return all parties`() {
         val partyId1 = 213
         val partyId2 = 123
-        val newParty1 = Party(partyId1, 0, "TestName", mutableListOf(), 145)
-        val newParty2 = Party(partyId2, 0, "TestName", mutableListOf(), 145)
+        val newParty1 = Party(partyId1, 0, "TestName",145)
+        val newParty2 = Party(partyId2, 0, "TestName",145)
 
         partyRepository.createParty(newParty1.partyId, newParty1)
         partyRepository.createParty(newParty2.partyId, newParty2)
@@ -47,8 +47,8 @@ class InMemoryPartyRepositoryImplTest {
 
     @Test
     fun `getAllPartiesIds should return all party IDs`() {
-        val newParty1 = Party(113, 0, "TestName", mutableListOf(), 145)
-        val newParty2 = Party(11213, 0, "TestName", mutableListOf(), 145)
+        val newParty1 = Party(113, 0, "TestName", 145)
+        val newParty2 = Party(11213, 0, "TestName",145)
 
         partyRepository.createParty(newParty1.partyId, newParty1)
         partyRepository.createParty(newParty2.partyId, newParty2)
@@ -60,7 +60,7 @@ class InMemoryPartyRepositoryImplTest {
 
     @Test
     fun `deleteParty should remove the party from the repository`() {
-        val newParty1 = Party(113, 0, "TestName", mutableListOf(), 145)
+        val newParty1 = Party(113, 0, "TestName",145)
         partyRepository.createParty(newParty1.partyId, newParty1)
         partyRepository.deleteParty(newParty1.partyId)
         val retrievedParty = partyRepository.getParty(newParty1.partyId)

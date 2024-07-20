@@ -29,6 +29,10 @@ class UserServiceImpl: UserService {
         return repositoryImpl.isUserExistById(chatId)
     }
 
+    override fun getUserById(chatId: Long): User? {
+        return repositoryImpl.getUserById(chatId)
+    }
+
     override fun savePendingPartyId(userId: Long, partyId: Int) {
         // logger.info("user $userId from now on interact with party $partyId")
         return repositoryImpl.savePendingPartyId(userId, partyId)

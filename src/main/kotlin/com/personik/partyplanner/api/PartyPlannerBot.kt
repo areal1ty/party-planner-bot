@@ -74,7 +74,7 @@ class PartyPlannerBot(
                 val partyId = callbackQuery.data.toIntOrNull() ?: return@callbackQuery
                 val party = partyService.getParty(partyId)
 
-                val isOwner = party!!.ownerId == chatId
+                val isOwner = party.ownerId == chatId
                 val buttonLabel = if (isOwner) "Завершить" else "Присоединиться"
                 val buttonCallbackData = if (isOwner) "stop_$partyId" else "join_$partyId"
 
@@ -84,7 +84,7 @@ class PartyPlannerBot(
 
                 bot.sendMessage(
                     ChatId.fromId(chatId),
-                    "Количество приглашенных гостей: ${party.invitedGuests.size}",
+                    "Количество приглашенных гостей: ${partyService.getGuestsOfParty(partyId).size}",
                     replyMarkup = inlineKeyboard
                 )
             }
@@ -115,9 +115,8 @@ class PartyPlannerBot(
         val chatId = callbackQuery.message?.chat?.id ?: return
         val partyId = callbackQuery.data.substringAfter("stop_").toIntOrNull() ?: return
         val result = partyService.stopGuestInviting(partyId)
-        val party = partyService.getParty(partyId)
 
-        party!!.invitedGuests.forEach {
+        partyService.getGuestsOfParty(partyId).forEach {
             bot.sendMessage(
                 ChatId.fromId(it.id),
                 "Приглашение гостей на вечеринку завершено. Она будет проходить в номере $result"
@@ -150,15 +149,12 @@ class PartyPlannerBot(
             }
             UserState.AWAITING_HOTEL_ROOM -> {
                 val pendingPartyId = userService.getPendingPartyId(chatId) ?: return
-                val hotelRoom = message.text?.toIntOrNull()
-                if (hotelRoom != null) {
-                    partyService.join(pendingPartyId, chatId)
-                    bot.sendMessage(ChatId.fromId(chatId), "Вы успешно присоединились к вечеринке!")
-                    userStates[chatId] = UserState.NONE
-                    showAvailablePartiesButton(chatId)
-                } else {
-                    bot.sendMessage(ChatId.fromId(chatId), "Пожалуйста, введите корректный номер.")
-                }
+                val hotelRoom = message.text ?: return
+                val user = userService.getUserById(chatId) ?: return
+                partyService.join(pendingPartyId, user)
+                bot.sendMessage(ChatId.fromId(chatId), "Вы успешно присоединились к вечеринке! Ваш номер - '${hotelRoom}', скоро мы выберем номер, в котором будет проводиться вечеринка! ")
+                userStates[chatId] = UserState.NONE
+                showAvailablePartiesButton(chatId)
             }
             else -> bot.sendMessage(ChatId.fromId(chatId), "Неизвестная команда. Пожалуйста, используйте команды из меню.")
         }

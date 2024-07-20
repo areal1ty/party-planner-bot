@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 class InMemoryUserRepositoryImpl: UserRepository {
     private var userChatIdStorage = ConcurrentHashMap<Long, User>()
     private var userHotelRoomStorage = ConcurrentHashMap<Int, User>()
-    private val pendingPartyIdStorage = ConcurrentHashMap<Long, Int>()
+    private var pendingPartyIdStorage = ConcurrentHashMap<Long, Int>()
 
     override fun createUser(id: Long, user: User) {
         userChatIdStorage[id] = user
