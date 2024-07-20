@@ -15,6 +15,13 @@ import com.personik.partyplanner.service.impl.PartyServiceImpl
 import com.personik.partyplanner.service.impl.UserServiceImpl
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+import java.util.concurrent.ConcurrentHashMap
+
+enum class UserState {
+    NONE,
+    AWAITING_PARTY_NAME,
+    AWAITING_HOTEL_ROOM
+}
 
 @Component
 class PartyPlannerBot(
@@ -22,24 +29,47 @@ class PartyPlannerBot(
     private val partyService: PartyServiceImpl,
     @Value("\${bot.token}") private val botToken: String
 ) {
+    private val userStates = ConcurrentHashMap<Long, UserState>()
+    private val processedUpdateIds = ConcurrentHashMap.newKeySet<Long>()
 
     private val bot: Bot = bot {
         token = botToken
         dispatch {
             command("start") {
+                val updateId = update.updateId
+                if (processedUpdateIds.contains(updateId)) return@command
+                processedUpdateIds.add(updateId)
+
                 val chatId = message.chat.id
                 val user = userService.createUser(chatId)
-                bot.sendMessage(ChatId.fromId(chatId), "Поздравляем с заселением! Ваш номер - ${user.id}")
+                bot.sendMessage(ChatId.fromId(chatId), "Поздравляем с заселением! Ваш номер - ${user.hotelRoom}")
+                showAvailablePartiesButton(chatId)
+            }
+
+            callbackQuery("show_parties") {
+                val updateId = update.updateId
+                if (processedUpdateIds.contains(updateId)) return@callbackQuery
+                processedUpdateIds.add(updateId)
+
+                val chatId = callbackQuery.message?.chat?.id ?: return@callbackQuery
                 showAvailableParties(chatId)
             }
 
-            command("create") {
-                val chatId = message.chat.id
+            callbackQuery("create_party") {
+                val updateId = update.updateId
+                if (processedUpdateIds.contains(updateId)) return@callbackQuery
+                processedUpdateIds.add(updateId)
+
+                val chatId = callbackQuery.message?.chat?.id ?: return@callbackQuery
                 bot.sendMessage(ChatId.fromId(chatId), "Введите название вечеринки:")
-                userService.savePendingPartyId(chatId, -1)
+                userStates[chatId] = UserState.AWAITING_PARTY_NAME
             }
 
             callbackQuery {
+                val updateId = update.updateId
+                if (processedUpdateIds.contains(updateId)) return@callbackQuery
+                processedUpdateIds.add(updateId)
+
                 val chatId = callbackQuery.message?.chat?.id ?: return@callbackQuery
                 val partyId = callbackQuery.data.toIntOrNull() ?: return@callbackQuery
                 val party = partyService.getParty(partyId)
@@ -68,6 +98,10 @@ class PartyPlannerBot(
             }
 
             text {
+                val updateId = update.updateId
+                if (processedUpdateIds.contains(updateId)) return@text
+                processedUpdateIds.add(updateId)
+
                 handleTextMessage(message)
             }
         }
@@ -89,7 +123,7 @@ class PartyPlannerBot(
                 "Приглашение гостей на вечеринку завершено. Она будет проходить в номере $result"
             )
         }
-        showAvailableParties(chatId)
+        showAvailablePartiesButton(chatId)
     }
 
     private fun CallbackQueryHandlerEnvironment.handleJoinCommand() {
@@ -98,34 +132,52 @@ class PartyPlannerBot(
 
         bot.sendMessage(ChatId.fromId(chatId), "Введите ваш номер в отеле:")
         userService.savePendingPartyId(chatId, partyId)
+        userStates[chatId] = UserState.AWAITING_HOTEL_ROOM
     }
 
     private fun handleTextMessage(message: Message) {
         val chatId = message.chat.id
-        var pendingPartyId = userService.getPendingPartyId(chatId)
-        if (pendingPartyId == -1) {
-            val partyName = message.text ?: return
-            val party = partyService.createParty(chatId, partyName)
-            bot.sendMessage(ChatId.fromId(chatId), "Вечеринка '${party.name}' успешно создана!")
-            userService.clearPendingPartyId(chatId)
-            showAvailableParties(chatId)
-        } else {
-            pendingPartyId = userService.getPendingPartyId(chatId) ?: return
-            val hotelRoom = message.text?.toIntOrNull()
-            if (hotelRoom != null) {
-                partyService.join(pendingPartyId, chatId)
-                showAvailableParties(chatId)
-            } else {
-                bot.sendMessage(ChatId.fromId(chatId), "Пожалуйста, введите корректный номер.")
+        val state = userStates[chatId]
+
+        when (state) {
+            UserState.AWAITING_PARTY_NAME -> {
+                val partyName = message.text ?: return
+                val party = partyService.createParty(chatId, partyName)
+                bot.sendMessage(ChatId.fromId(chatId), "Вечеринка '${party.name}' успешно создана!")
+                userService.clearPendingPartyId(chatId)
+                userStates[chatId] = UserState.NONE
+                showAvailablePartiesButton(chatId)
             }
+            UserState.AWAITING_HOTEL_ROOM -> {
+                val pendingPartyId = userService.getPendingPartyId(chatId) ?: return
+                val hotelRoom = message.text?.toIntOrNull()
+                if (hotelRoom != null) {
+                    partyService.join(pendingPartyId, chatId)
+                    bot.sendMessage(ChatId.fromId(chatId), "Вы успешно присоединились к вечеринке!")
+                    userStates[chatId] = UserState.NONE
+                    showAvailablePartiesButton(chatId)
+                } else {
+                    bot.sendMessage(ChatId.fromId(chatId), "Пожалуйста, введите корректный номер.")
+                }
+            }
+            else -> bot.sendMessage(ChatId.fromId(chatId), "Неизвестная команда. Пожалуйста, используйте команды из меню.")
         }
+    }
+
+    private fun showAvailablePartiesButton(chatId: Long) {
+        val inlineKeyboard = InlineKeyboardMarkup.createSingleButton(
+            InlineKeyboardButton.CallbackData(text = "Показать доступные вечеринки", callbackData = "show_parties")
+        )
+        bot.sendMessage(ChatId.fromId(chatId), "Нажмите кнопку, чтобы увидеть доступные вечеринки.", replyMarkup = inlineKeyboard)
     }
 
     private fun showAvailableParties(chatId: Long) {
         val parties = partyService.getAllParties()
         val inlineKeyboard = InlineKeyboardMarkup.create(
-            parties.map {
-                listOf(InlineKeyboardButton.CallbackData(text = it.name, callbackData = partyService.getAllPartiesIds().toString()))
+            listOf(
+                listOf(InlineKeyboardButton.CallbackData(text = "Создать вечеринку", callbackData = "create_party"))
+            ) + parties.map {
+                listOf(InlineKeyboardButton.CallbackData(text = it.name, callbackData = it.partyId.toString()))
             }
         )
         bot.sendMessage(ChatId.fromId(chatId), "Список доступных вечеринок:", replyMarkup = inlineKeyboard)

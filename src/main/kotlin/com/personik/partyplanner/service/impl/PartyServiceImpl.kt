@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service
 class PartyServiceImpl: PartyService {
     private val repositoryImpl = InMemoryPartyRepositoryImpl()
     private val userRepo = InMemoryUserRepositoryImpl()
-    private val rooms = userRepo.getAllRooms()
     private var partyIdCounter = 0
 
     override fun createParty(ownerId: Long, partyName: String): Party {
@@ -60,7 +59,8 @@ class PartyServiceImpl: PartyService {
     }
 
     private fun determineOptimalHotelRoom(): Int {
-        if (rooms.isEmpty()) throw IllegalArgumentException("Rooms list cannot be empty")
+        val rooms = userRepo.getAllRooms()
+        if (rooms.isEmpty()) return 0
         val roomsCopy = rooms.toMutableList()
         val medianIndex = roomsCopy.size / 2
         // logger.info("determining optimal hotel room...")
