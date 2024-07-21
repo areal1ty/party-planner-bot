@@ -6,7 +6,7 @@ import com.personik.partyplanner.service.UserService
 import org.springframework.stereotype.Service
 
 @Service
-class UserServiceImpl: UserService {
+class UserServiceImpl : UserService {
     // private val logger = LoggerFactory.getLogger("UserServiceImpl")
     private val repositoryImpl = InMemoryUserRepositoryImpl()
     private var hotelRoomCounter = 0
@@ -31,6 +31,10 @@ class UserServiceImpl: UserService {
 
     override fun getUserById(chatId: Long): User? {
         return repositoryImpl.getUserById(chatId)
+    }
+
+    override fun getAllRooms(): List<Int> {
+        return repositoryImpl.getAllRooms()
     }
 
     override fun savePendingPartyId(userId: Long, partyId: Int) {

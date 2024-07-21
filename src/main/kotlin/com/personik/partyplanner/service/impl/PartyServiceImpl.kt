@@ -3,15 +3,12 @@ package com.personik.partyplanner.service.impl
 import com.personik.partyplanner.model.Party
 import com.personik.partyplanner.model.User
 import com.personik.partyplanner.repository.inmemory.InMemoryPartyRepositoryImpl
-import com.personik.partyplanner.repository.inmemory.InMemoryUserRepositoryImpl
 import com.personik.partyplanner.service.PartyService
 import org.springframework.stereotype.Service
 
 @Service
-class PartyServiceImpl: PartyService {
+class PartyServiceImpl : PartyService {
     private val repositoryImpl = InMemoryPartyRepositoryImpl()
-    private val userRepo = InMemoryUserRepositoryImpl()
-    private val userService = UserServiceImpl()
     private var partyIdCounter = 0
 
     override fun createParty(ownerId: Long, partyName: String): Party {
@@ -40,11 +37,11 @@ class PartyServiceImpl: PartyService {
         return repositoryImpl.getParty(partyId)
     }
 
-    override fun stopGuestInviting(partyId: Int): Int {
+    override fun stopGuestInviting(partyId: Int, rooms: List<Int>): Int {
         //logger.info("stopping guest inviting...")
         repositoryImpl.deleteParty(partyId)
         //logger.info("party was successfully deleted")
-        return determineOptimalHotelRoom()
+        return determineOptimalHotelRoom(rooms)
     }
 
     override fun join(partyId: Int, user: User) {
@@ -61,8 +58,7 @@ class PartyServiceImpl: PartyService {
         return repositoryImpl.getGuestsOfParty(partyId)
     }
 
-    private fun determineOptimalHotelRoom(): Int {
-        val rooms = userRepo.getAllRooms()
+    private fun determineOptimalHotelRoom(rooms: List<Int>): Int {
         if (rooms.isEmpty()) return 0
         val roomsCopy = rooms.toMutableList()
         val medianIndex = roomsCopy.size / 2

@@ -8,7 +8,7 @@ interface PartyService {
     fun getAllParties(): List<Party>
     fun getAllPartiesIds(): List<Int>
     fun getParty(partyId: Int): Party
-    fun stopGuestInviting(partyId: Int): Int
+    fun stopGuestInviting(partyId: Int, rooms: List<Int>): Int
     fun join(partyId: Int, user: User)
     fun getGuestsOfParty(partyId: Int): List<User>?
 

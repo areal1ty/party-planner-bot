@@ -10,5 +10,4 @@ interface UserRepository {
     fun savePendingPartyId(userId: Long, partyId: Int)
     fun getPendingPartyId(userId: Long): Int?
     fun clearPendingPartyId(userId: Long)
-
 }

@@ -114,7 +114,8 @@ class PartyPlannerBot(
     private fun CallbackQueryHandlerEnvironment.handleStopCommand() {
         val chatId = callbackQuery.message?.chat?.id ?: return
         val partyId = callbackQuery.data.substringAfter("stop_").toIntOrNull() ?: return
-        val result = partyService.stopGuestInviting(partyId)
+        val rooms = userService.getAllRooms()
+        val result = partyService.stopGuestInviting(partyId, rooms)
 
         partyService.getGuestsOfParty(partyId).forEach {
             bot.sendMessage(
@@ -147,16 +148,24 @@ class PartyPlannerBot(
                 userStates[chatId] = UserState.NONE
                 showAvailablePartiesButton(chatId)
             }
+
             UserState.AWAITING_HOTEL_ROOM -> {
                 val pendingPartyId = userService.getPendingPartyId(chatId) ?: return
                 val hotelRoom = message.text ?: return
                 val user = userService.getUserById(chatId) ?: return
                 partyService.join(pendingPartyId, user)
-                bot.sendMessage(ChatId.fromId(chatId), "Вы успешно присоединились к вечеринке! Ваш номер - '${hotelRoom}', скоро мы выберем номер, в котором будет проводиться вечеринка! ")
+                bot.sendMessage(
+                    ChatId.fromId(chatId),
+                    "Вы успешно присоединились к вечеринке! Ваш номер - '${hotelRoom}', скоро мы выберем номер, в котором будет проводиться вечеринка! "
+                )
                 userStates[chatId] = UserState.NONE
                 showAvailablePartiesButton(chatId)
             }
-            else -> bot.sendMessage(ChatId.fromId(chatId), "Неизвестная команда. Пожалуйста, используйте команды из меню.")
+
+            else -> bot.sendMessage(
+                ChatId.fromId(chatId),
+                "Неизвестная команда. Пожалуйста, используйте команды из меню."
+            )
         }
     }
 
@@ -164,7 +173,11 @@ class PartyPlannerBot(
         val inlineKeyboard = InlineKeyboardMarkup.createSingleButton(
             InlineKeyboardButton.CallbackData(text = "Показать доступные вечеринки", callbackData = "show_parties")
         )
-        bot.sendMessage(ChatId.fromId(chatId), "Нажмите кнопку, чтобы увидеть доступные вечеринки.", replyMarkup = inlineKeyboard)
+        bot.sendMessage(
+            ChatId.fromId(chatId),
+            "Нажмите кнопку, чтобы увидеть доступные вечеринки.",
+            replyMarkup = inlineKeyboard
+        )
     }
 
     private fun showAvailableParties(chatId: Long) {
